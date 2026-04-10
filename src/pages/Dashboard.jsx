@@ -8,7 +8,6 @@ export default function Dashboard() {
   const [selectedNote, setSelectedNote] = useState(null);
   const [refreshFlag, setRefreshFlag] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
-  const forceRefreshRef = useRef(false);
   const hasInitialized = useRef(false);
   const editorRef = useRef(null);
   const isCreatingNoteRef = useRef(false);
@@ -38,27 +37,25 @@ export default function Dashboard() {
     }
   };
 
-  const loadLastNote = async () => {
-    try {
-      const records = await pb.collection('notes').getList(1, 1, {
-        sort: '-created',
-        filter: `owner.id="${pb.authStore.model.id}"`,
-      });
-      if (records.items.length > 0) {
-        setSelectedNote(records.items[0]);
-      } else {
-        await handleNewNote();
-      }
-    } catch (err) {
-      console.error('Failed to load last note:', err);
-      await handleNewNote();
-    }
-  };
-
   useEffect(() => {
     if (!hasInitialized.current) {
       hasInitialized.current = true;
-      loadLastNote();
+      (async () => {
+        try {
+          const records = await pb.collection('notes').getList(1, 1, {
+            sort: '-created',
+            filter: `owner.id="${pb.authStore.model.id}"`,
+          });
+          if (records.items.length > 0) {
+            setSelectedNote(records.items[0]);
+          } else {
+            await handleNewNote();
+          }
+        } catch (err) {
+          console.error('Failed to load last note:', err);
+          await handleNewNote();
+        }
+      })();
     }
   }, []);
 
@@ -67,7 +64,6 @@ export default function Dashboard() {
       const refreshCurrentNote = async () => {
         try {
           const updatedNote = await pb.collection('notes').getOne(selectedNote.id, { expand: 'folder' });
-          console.log('Refreshed selected note:', { id: updatedNote.id, title: updatedNote.title, folder: updatedNote.folder });
           setSelectedNote(updatedNote);
         } catch (err) {
           console.error('Failed to refresh note:', err);
@@ -75,7 +71,7 @@ export default function Dashboard() {
       };
       refreshCurrentNote();
     }
-  }, [refreshFlag]);
+  }, [refreshFlag, selectedNote?.id]);
 
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', background: theme.colors.background.primary }}>
@@ -89,7 +85,6 @@ export default function Dashboard() {
           setShowNotes(false);
         }}
         onNewNote={handleNewNote}
-        refreshFlag={refreshFlag}
         onNotesRefreshed={() => setRefreshFlag(prev => prev + 1)}
       />
       <div style={{ flex: 1 }}>

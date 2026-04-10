@@ -1,7 +1,7 @@
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/useAuth';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import { Spinner } from '@heroui/react';
 import { theme } from './lib/theme';
 
 function AppContent() {
@@ -10,7 +10,7 @@ function AppContent() {
   if (isLoading) {
     return (
       <div style={{ minHeight: '100vh', background: theme.colors.background.primary, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Spinner size="lg" />
+        <div style={{ fontSize: 14, color: theme.colors.text.tertiary }}>Loading...</div>
       </div>
     );
   }

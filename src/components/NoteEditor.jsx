@@ -111,6 +111,10 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
         .markdown-preview table { border-collapse: collapse; margin: 1em 0; }
         .markdown-preview th, .markdown-preview td { border: 1px solid ${theme.colors.border.primary}; padding: 8px 12px; }
         .markdown-preview th { background: ${theme.colors.background.tertiary}; font-weight: 600; }
+        .preview-button { opacity: ${theme.opacity.muted}; transition: opacity 0.15s; }
+        .preview-button:hover { opacity: 1; }
+        .logout-button { opacity: ${theme.opacity.muted}; transition: opacity 0.15s; }
+        .logout-button:hover { opacity: 1; }
       `}</style>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.md }}>
         <input
@@ -131,9 +135,8 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
         />
         <button
           onClick={() => setIsPreview(!isPreview)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: theme.opacity.muted, color: 'inherit', padding: '4px 8px', fontSize: 12 }}
-          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-          onMouseLeave={(e) => e.currentTarget.style.opacity = theme.opacity.muted}
+          className="preview-button"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: '4px 8px', fontSize: 12 }}
         >
           {isPreview ? 'Edit' : 'Preview'}
         </button>
@@ -162,7 +165,7 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
       )}
       <div style={{ position: 'fixed', bottom: 20, right: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ opacity: theme.opacity.muted }}>{pb.authStore.model?.email}</span>
-        <button onClick={handleLogout} style={{ opacity: theme.opacity.muted, cursor: 'pointer', background: 'none', border: 'none', color: 'inherit' }}>Logout</button>
+        <button onClick={handleLogout} className="logout-button" style={{ cursor: 'pointer', background: 'none', border: 'none', color: 'inherit' }}>Logout</button>
       </div>
     </div>
   );

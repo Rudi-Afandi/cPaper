@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { TrashBin, Plus, ChevronDown, ChevronRight } from '@gravity-ui/icons';
 import pb from '../lib/pocketbase';
 import { theme } from '../lib/theme';
 
-export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose, onToggle, onNewNote, onNotesRefreshed }) {
+export default function Sidebar({ onSelectNote, showNotes, onClose, onToggle, onNewNote, onNotesRefreshed }) {
   const [notes, setNotes] = useState([]);
   const [folders, setFolders] = useState([]);
   const [collapsedFolders, setCollapsedFolders] = useState({});
@@ -16,14 +16,6 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
         filter: `owner.id="${pb.authStore.model.id}"`,
         expand: 'folder',
       });
-      console.log('Fetched notes:', records.map(n => ({
-        id: n.id,
-        title: n.title,
-        folder: n.folder,
-        folderType: typeof n.folder,
-        isArray: Array.isArray(n.folder),
-        expand: n.expand
-      })));
       setNotes(records);
     } catch (err) {
       console.error('Failed to fetch notes:', err);
@@ -36,11 +28,6 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
         sort: 'name',
         filter: `owner.id="${pb.authStore.model.id}"`,
       });
-      console.log('Fetched folders:', records.map(f => ({
-        id: f.id,
-        name: f.name,
-        idType: typeof f.id
-      })));
       setFolders(records);
     } catch (err) {
       console.error('Failed to fetch folders:', err);
@@ -60,13 +47,7 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
   const handleDeleteFolder = async (e, folderId) => {
     e.stopPropagation();
     try {
-      const folderNotes = notes.filter(note => {
-        if (!note.folder || !Array.isArray(note.folder) || note.folder.length === 0) return false;
-        const folderItem = note.folder[0];
-        if (!folderItem) return false;
-        const noteFolderId = typeof folderItem === 'object' && folderItem.id ? folderItem.id : folderItem;
-        return noteFolderId === folderId;
-      });
+      const folderNotes = getFolderNotes(folderId);
       for (const note of folderNotes) {
         await pb.collection('notes').update(note.id, { folder: null });
       }
@@ -144,35 +125,11 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
       const folder = folders.find(f => f.id === folderId);
       if (!folder) return;
 
-      console.log('Before update - Note ID:', noteId, 'Folder ID:', folderId, 'Folder:', folder);
-      const currentNote = notes.find(n => n.id === noteId);
-      console.log('Current note:', currentNote);
-      console.log('Current note folder field:', currentNote?.folder, 'Type:', typeof currentNote?.folder);
-      
-      console.log('Calling update with data:', { folder: folderId });
       await pb.collection('notes').update(noteId, { folder: folderId });
-      
-      const updatedNote = await pb.collection('notes').getOne(noteId, { expand: 'folder' });
-      console.log('Updated note from DB:', {
-        id: updatedNote.id,
-        title: updatedNote.title,
-        folder: updatedNote.folder,
-        folderType: typeof updatedNote.folder,
-        isArray: Array.isArray(updatedNote.folder)
-      });
-      
-      console.log('After update - Setting note folder to:', folderId);
-      
-      setNotes(prevNotes => {
-        const updated = prevNotes.map(note => note.id === noteId ? { ...note, folder: [folder] } : note);
-        console.log('Updated notes state:', updated.map(n => ({ id: n.id, title: n.title, folder: n.folder })));
-        return updated;
-      });
-      
+      setNotes(prevNotes => prevNotes.map(note => note.id === noteId ? { ...note, folder: [folder] } : note));
       onNotesRefreshed?.();
     } catch (err) {
       console.error('Failed to move note to folder:', err);
-      console.error('Error details:', err.data);
     }
   };
 
@@ -186,29 +143,25 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
     toggleFolder(folderId);
   };
 
-  const uncategorizedNotes = notes.filter(note => {
-    if (!note.folder || !Array.isArray(note.folder) || note.folder.length === 0) return true;
-    const folderItem = note.folder[0];
-    if (!folderItem) return true;
-    const folderId = typeof folderItem === 'object' && folderItem.id ? folderItem.id : folderItem;
-    return !folders.some(folder => folder.id === folderId);
-  });
+  const uncategorizedNotes = useMemo(() => {
+    return notes.filter(note => {
+      if (!note.folder || !Array.isArray(note.folder) || note.folder.length === 0) return true;
+      const folderItem = note.folder[0];
+      if (!folderItem) return true;
+      const folderId = typeof folderItem === 'object' && folderItem.id ? folderItem.id : folderItem;
+      return !folders.some(folder => folder.id === folderId);
+    });
+  }, [notes, folders]);
 
-  console.log('Debug - Notes:', notes.map(n => ({
-    id: n.id,
-    title: n.title,
-    folder: n.folder,
-    folderType: typeof n.folder,
-    isArray: Array.isArray(n.folder)
-  })));
-  console.log('Debug - Folders:', folders.map(f => ({ id: f.id, name: f.name })));
-  console.log('Debug - Uncategorized:', {
-    count: uncategorizedNotes.length,
-    notes: uncategorizedNotes.map(n => ({
-      title: n.title,
-      folder: n.folder
-    }))
-  });
+  const getFolderNotes = (folderId) => {
+    return notes.filter(note => {
+      if (!note.folder || !Array.isArray(note.folder) || note.folder.length === 0) return false;
+      const folderItem = note.folder[0];
+      if (!folderItem) return false;
+      const noteFolderId = typeof folderItem === 'object' && folderItem.id ? folderItem.id : folderItem;
+      return noteFolderId === folderId;
+    });
+  };
 
   return (
     <div>
@@ -255,6 +208,12 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
           -ms-overflow-style: none;
           scrollbar-width: none;
         }
+        .icon-button { opacity: ${theme.opacity.muted}; transition: opacity 0.15s; }
+        .icon-button:hover { opacity: 1; }
+        .delete-button { opacity: 0.3; transition: opacity 0.15s; }
+        .delete-button:hover { opacity: 1; }
+        .note-item { transition: background 0.15s; }
+        .note-item:hover { background: ${theme.colors.background.hover}; }
       `}</style>
 
       {showNotes && (
@@ -265,18 +224,16 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
               <button
                 onClick={handleCreateFolder}
                 title="New folder"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: theme.opacity.muted, color: theme.colors.text.primary, display: 'flex', alignItems: 'center' }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = theme.opacity.muted}
+                className="icon-button"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.text.primary, display: 'flex', alignItems: 'center' }}
               >
                 <Plus style={{ width: 18, height: 18 }} />
               </button>
               <button
                 onClick={onNewNote}
                 title="New note"
-                style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: theme.opacity.muted, color: theme.colors.text.primary, display: 'flex', alignItems: 'center' }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = theme.opacity.muted}
+                className="icon-button"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.text.primary, display: 'flex', alignItems: 'center' }}
               >
                 <Plus style={{ width: 18, height: 18 }} />
               </button>
@@ -285,14 +242,7 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: theme.spacing.sm }}>
             {folders.map((folder) => {
-              const folderNotes = notes.filter(note => {
-                if (!note.folder || !Array.isArray(note.folder) || note.folder.length === 0) return false;
-                const folderItem = note.folder[0];
-                if (!folderItem) return false;
-                const folderId = typeof folderItem === 'object' && folderItem.id ? folderItem.id : folderItem;
-                console.log(`Checking note ${note.title}:`, { folderId, expectedId: folder.id, match: folderId === folder.id });
-                return folderId === folder.id;
-              });
+              const folderNotes = getFolderNotes(folder.id);
               const isCollapsed = collapsedFolders[folder.id];
 
               return (
@@ -325,19 +275,17 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
                     <span style={{ opacity: 0.5, fontSize: 11 }}> ({folderNotes.length})</span>
                     <button
                       onClick={(e) => handleDeleteFolder(e, folder.id)}
+                      className="delete-button"
                       style={{
                         marginLeft: 'auto',
                         background: 'none',
                         border: 'none',
                         cursor: 'pointer',
-                        opacity: 0.3,
                         color: theme.colors.text.danger,
                         padding: theme.spacing.xs,
                         display: 'flex',
                         alignItems: 'center'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                      onMouseLeave={(e) => e.currentTarget.style.opacity = '0.3'}
                     >
                       <TrashBin style={{ width: 14, height: 14 }} />
                     </button>
@@ -354,18 +302,16 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
                           }}
                           draggable
                           onDragStart={(e) => handleNoteDragStart(e, note.id)}
+                          className="note-item"
                           style={{
                             padding: `${theme.spacing.sm}px ${theme.spacing.md}px`,
                             borderRadius: theme.radius.sm,
                             cursor: 'pointer',
                             background: theme.colors.background.transparent,
-                            transition: 'background 0.15s',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = theme.colors.background.hover}
-                          onMouseLeave={(e) => e.currentTarget.style.background = theme.colors.background.transparent}
                         >
                           <div style={{ flex: 1, overflow: 'hidden' }}>
                             <div style={{ fontWeight: 500, fontSize: 13, color: theme.colors.text.primary }}>{note.title || 'Untitled'}</div>
@@ -375,9 +321,8 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
                           </div>
                           <button
                             onClick={(e) => handleDeleteNote(e, note.id)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, color: theme.colors.text.danger, padding: theme.spacing.xs, display: 'flex', alignItems: 'center' }}
-                            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.3'}
+                            className="delete-button"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.text.danger, padding: theme.spacing.xs, display: 'flex', alignItems: 'center' }}
                           >
                             <TrashBin style={{ width: 14, height: 14 }} />
                           </button>
@@ -437,18 +382,16 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
                     }}
                     draggable
                     onDragStart={(e) => handleNoteDragStart(e, note.id)}
+                    className="note-item"
                     style={{
                       padding: theme.spacing.md,
                       borderRadius: theme.radius.md,
                       cursor: 'pointer',
                       background: theme.colors.background.transparent,
-                      transition: 'background 0.15s',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = theme.colors.background.hover}
-                    onMouseLeave={(e) => e.currentTarget.style.background = theme.colors.background.transparent}
                   >
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                       <div style={{ fontWeight: 500, fontSize: 14, color: theme.colors.text.primary }}>{note.title || 'Untitled'}</div>
@@ -458,9 +401,8 @@ export default function Sidebar({ refreshFlag, onSelectNote, showNotes, onClose,
                     </div>
                     <button
                       onClick={(e) => handleDeleteNote(e, note.id)}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, color: theme.colors.text.danger, padding: theme.spacing.xs, display: 'flex', alignItems: 'center' }}
-                      onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                      onMouseLeave={(e) => e.currentTarget.style.opacity = '0.4'}
+                      className="delete-button"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: theme.colors.text.danger, padding: theme.spacing.xs, display: 'flex', alignItems: 'center' }}
                     >
                       <TrashBin style={{ width: 16, height: 16 }} />
                     </button>
