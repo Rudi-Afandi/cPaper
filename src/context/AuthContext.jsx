@@ -1,7 +1,7 @@
 import { createContext, useState, useEffect } from 'react';
 import pb from '../lib/pocketbase';
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(pb.authStore.model);
