@@ -1,0 +1,71 @@
+export const theme = {
+  colors: {
+    background: {
+      primary: '#0a0a0a',
+      secondary: '#1a1a1a',
+      tertiary: '#222',
+      hover: 'rgba(255,255,255,0.1)',
+      transparent: 'transparent',
+    },
+    border: {
+      primary: '#333',
+      secondary: '#555',
+    },
+    text: {
+      primary: '#ffffff',
+      secondary: '#e0e0e0',
+      muted: '#aaaaaa',
+      tertiary: '#cccccc',
+      inverse: '#000000',
+      danger: '#ff6b6b',
+      link: '#6b9fff',
+    },
+    button: {
+      primary: '#ffffff',
+      primaryText: '#000000',
+    },
+  },
+  opacity: {
+    disabled: 0.5,
+    muted: 0.6,
+    subtle: 0.1,
+  },
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    xxl: 48,
+  },
+  radius: {
+    sm: 4,
+    md: 8,
+    lg: 12,
+  },
+};
+
+export const markdownStyles = {
+  h1: { fontSize: '2em', fontWeight: 700, margin: '0.67em 0', color: theme.colors.text.primary },
+  h2: { fontSize: '1.5em', fontWeight: 600, margin: '0.83em 0', color: theme.colors.text.primary },
+  h3: { fontSize: '1.17em', fontWeight: 600, margin: '1em 0', color: theme.colors.text.primary },
+  h4: { fontSize: '1em', fontWeight: 600, margin: '1.33em 0', color: theme.colors.text.primary },
+  h5: { fontSize: '0.83em', fontWeight: 600, margin: '1.67em 0', color: theme.colors.text.primary },
+  h6: { fontSize: '0.67em', fontWeight: 600, margin: '2.33em 0', color: theme.colors.text.primary },
+  p: { margin: '1em 0', color: theme.colors.text.secondary, lineHeight: 1.6 },
+  ul: { margin: '1em 0', paddingLeft: 30, color: theme.colors.text.secondary },
+  ol: { margin: '1em 0', paddingLeft: 30, color: theme.colors.text.secondary },
+  li: { margin: '0.25em 0' },
+  code: { background: theme.colors.background.tertiary, padding: '2px 6px', borderRadius: 4, fontFamily: 'monospace', color: theme.colors.text.primary },
+  pre: { background: theme.colors.background.primary, padding: 16, borderRadius: 8, overflowX: 'auto', margin: '1em 0' },
+  preCode: { background: 'none', padding: 0 },
+  blockquote: { borderLeft: `4px solid ${theme.colors.border.secondary}`, margin: '1em 0', paddingLeft: 16, color: theme.colors.text.muted, fontStyle: 'italic' },
+  a: { color: theme.colors.text.link, textDecoration: 'underline' },
+  hr: { border: 'none', borderTop: `1px solid ${theme.colors.border.primary}`, margin: '1.5em 0' },
+  img: { maxWidth: '100%', borderRadius: 8 },
+  strong: { fontWeight: 700, color: theme.colors.text.primary },
+  em: { fontStyle: 'italic', color: theme.colors.text.tertiary },
+  table: { borderCollapse: 'collapse', margin: '1em 0' },
+  th: { border: `1px solid ${theme.colors.border.primary}`, padding: '8px 12px', background: theme.colors.background.secondary, fontWeight: 600 },
+  td: { border: `1px solid ${theme.colors.border.primary}`, padding: '8px 12px' },
+};
