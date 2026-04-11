@@ -9,7 +9,7 @@ services:
         - VITE_POCKETBASE_URL=${VITE_POCKETBASE_URL}
     container_name: cpaper-frontend
     ports:
-      - "4173:4173"
+      - "8091:8091"
     env_file:
       - .env
     restart: unless-stopped
