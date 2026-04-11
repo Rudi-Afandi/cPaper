@@ -17,12 +17,10 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-COPY --from=builder /app/package*.json ./
-RUN npm ci --only=production
+RUN npm install -g serve
 
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/vite.config.js ./
 
 EXPOSE 4173
 
-CMD ["npm", "run", "preview"]
+CMD ["serve", "-s", "dist", "-l", "4173"]
