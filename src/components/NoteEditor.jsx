@@ -88,8 +88,11 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100vh', padding: '48px 20%', position: 'relative', background: theme.colors.background.primary, color: theme.colors.text.primary }}>
+    <div className="note-editor-container" style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100vh', padding: '48px 20%', position: 'relative', background: theme.colors.background.primary, color: theme.colors.text.primary }}>
       <style>{`
+        @media (max-width: 768px) {
+          .note-editor-container { padding: 48px 16px !important; }
+        }
         .markdown-preview h1 { font-size: 2em; font-weight: 700; margin: 0.67em 0; color: ${theme.colors.text.primary}; }
         .markdown-preview h2 { font-size: 1.5em; font-weight: 600; margin: 0.83em 0; color: ${theme.colors.text.primary}; }
         .markdown-preview h3 { font-size: 1.17em; font-weight: 600; margin: 1em 0; color: ${theme.colors.text.primary}; }
@@ -133,13 +136,6 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
             flex: 1
           }}
         />
-        <button
-          onClick={() => setIsPreview(!isPreview)}
-          className="preview-button"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: '4px 8px', fontSize: 12 }}
-        >
-          {isPreview ? 'Edit' : 'Preview'}
-        </button>
       </div>
       {isPreview ? (
         <div style={{ padding: '8px', flex: 1, overflowY: 'auto', background: 'transparent', color: theme.colors.text.primary }} className="markdown-preview">
@@ -163,9 +159,18 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
           }}
         />
       )}
-      <div style={{ position: 'fixed', bottom: 20, right: 20, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={{ opacity: theme.opacity.muted }}>{pb.authStore.model?.email}</span>
-        <button onClick={handleLogout} className="logout-button" style={{ cursor: 'pointer', background: 'none', border: 'none', color: 'inherit' }}>Logout</button>
+      <div style={{ position: 'fixed', bottom: 20, left: 20, right: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button
+          onClick={() => setIsPreview(!isPreview)}
+          className="preview-button"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: '4px 8px', fontSize: 12 }}
+        >
+          {isPreview ? 'Edit' : 'Preview'}
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ opacity: theme.opacity.muted, fontSize: 12 }}>{pb.authStore.model?.email}</span>
+          <button onClick={handleLogout} className="logout-button" style={{ cursor: 'pointer', background: 'none', border: 'none', color: 'inherit', fontSize: 12, padding: '4px 8px' }}>Logout</button>
+        </div>
       </div>
     </div>
   );
