@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cpaper-frontend
+    ports:
+      - "4173:4173"
+    environment:
+      - NODE_ENV=production
+      - VITE_POCKETBASE_URL=http://pocketbase:8090
+    depends_on:
+      - pocketbase
+    restart: unless-stopped
+
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:latest
+    container_name: cpaper-pocketbase
+    ports:
+      - "8090:8090"
+    volumes:
+      - pocketbase_data:/pb_data
+      - pocketbase_public:/pb_public
+    restart: unless-stopped
+
+volumes:
+  pocketbase_data:
+  pocketbase_public:

@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.gitignore
+.DS_Store
+.env
+.env.local
+.env.*.local
+README.md
+IMPLEMENTATION_PLAN.md
+ZED_IDE_DESIGN.md
