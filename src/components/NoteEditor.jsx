@@ -10,20 +10,50 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
   const isNoteChanging = useRef(false);
   const savedNoteRef = useRef(null);
   const isSavingRef = useRef(false);
+  const isTypingRef = useRef(false);
+  const typingTimerRef = useRef(null);
+  const lastSyncedTitleRef = useRef('');
+  const lastSyncedContentRef = useRef('');
+
+  useEffect(() => {
+    const cleanup = () => {
+      clearTimeout(typingTimerRef.current);
+      if (savedNoteRef.current?.id) {
+        localStorage.removeItem(`unsaved_note_${savedNoteRef.current.id}`);
+      }
+    };
+
+    return () => {
+      cleanup();
+    };
+  }, []);
 
   useEffect(() => {
     isNoteChanging.current = true;
     if (note) {
-      setTitle(note.title || '');
-      setContent(note.content || '');
+      const unsavedData = localStorage.getItem(`unsaved_note_${note.id}`);
+      if (unsavedData) {
+        const { title: savedTitle, content: savedContent } = JSON.parse(unsavedData);
+        setTitle(savedTitle);
+        setContent(savedContent);
+      } else {
+        setTitle(note.title || '');
+        setContent(note.content || '');
+      }
       savedNoteRef.current = note.id ? note : null;
+      lastSyncedTitleRef.current = note.title || '';
+      lastSyncedContentRef.current = note.content || '';
     } else {
       setTitle('');
       setContent('');
       savedNoteRef.current = null;
+      lastSyncedTitleRef.current = '';
+      lastSyncedContentRef.current = '';
     }
     setIsPreview(false);
     isSavingRef.current = false;
+    isTypingRef.current = false;
+    clearTimeout(typingTimerRef.current);
     setTimeout(() => {
       isNoteChanging.current = false;
     }, 100);
@@ -32,6 +62,38 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
   const handleLogout = () => {
     pb.authStore.clear();
     window.location.href = '/login';
+  };
+
+  const handleTyping = useCallback(() => {
+    isTypingRef.current = true;
+    clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+    }, 2000);
+  }, []);
+
+  const handleTitleChange = (e) => {
+    const newTitle = e.target.value;
+    handleTyping();
+    setTitle(newTitle);
+    if (savedNoteRef.current?.id) {
+      localStorage.setItem(`unsaved_note_${savedNoteRef.current.id}`, JSON.stringify({
+        title: newTitle,
+        content: content
+      }));
+    }
+  };
+
+  const handleContentChange = (e) => {
+    const newContent = e.target.value;
+    handleTyping();
+    setContent(newContent);
+    if (savedNoteRef.current?.id) {
+      localStorage.setItem(`unsaved_note_${savedNoteRef.current.id}`, JSON.stringify({
+        title: title,
+        content: newContent
+      }));
+    }
   };
 
   const saveNote = useCallback(async () => {
@@ -75,13 +137,62 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
   }));
 
   useEffect(() => {
-    if (!isNoteChanging.current && !isSavingRef.current && title.trim() && (title !== savedNoteRef.current?.title || content !== savedNoteRef.current?.content)) {
-      const timeoutId = setTimeout(() => {
-        saveNote();
-      }, 500);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [title, content, saveNote]);
+    const syncInterval = setInterval(async () => {
+      if (isTypingRef.current || isSavingRef.current) return;
+
+      const currentTitle = title.trim();
+      if (!currentTitle) return;
+
+      const hasTitleChanged = title !== lastSyncedTitleRef.current;
+      const hasContentChanged = content !== lastSyncedContentRef.current;
+
+      if (hasTitleChanged || hasContentChanged) {
+        isSavingRef.current = true;
+
+        try {
+          const data = {
+            title: currentTitle,
+            content,
+            owner: pb.authStore.model.id,
+          };
+
+          let savedNote;
+          if (savedNoteRef.current?.id) {
+            const folderId = savedNoteRef.current.folder && Array.isArray(savedNoteRef.current.folder) && savedNoteRef.current.folder.length > 0 
+              ? savedNoteRef.current.folder[0].id 
+              : null;
+            if (folderId) {
+              data.folder = folderId;
+            }
+            savedNote = await pb.collection('notes').update(savedNoteRef.current.id, data);
+            savedNoteRef.current = savedNote;
+          } else {
+            savedNote = await pb.collection('notes').create(data);
+            savedNote.isNew = false;
+            savedNoteRef.current = savedNote;
+          }
+
+          lastSyncedTitleRef.current = title;
+          lastSyncedContentRef.current = content;
+
+          if (savedNoteRef.current?.id) {
+            localStorage.removeItem(`unsaved_note_${savedNoteRef.current.id}`);
+          }
+
+          if (savedNote) {
+            onSave(savedNote);
+            refreshNotes?.();
+          }
+        } catch (err) {
+          console.error('Failed to sync note:', err);
+        } finally {
+          isSavingRef.current = false;
+        }
+      }
+    }, 3000);
+
+    return () => clearInterval(syncInterval);
+  }, [title, content, onSave, refreshNotes]);
 
   if (!note && !title) {
     return null;
@@ -123,7 +234,7 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
         <input
           type="text"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={handleTitleChange}
           placeholder="Untitled"
           style={{
             background: 'transparent',
@@ -144,7 +255,7 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
       ) : (
         <textarea
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={handleContentChange}
           placeholder="Write your note..."
           style={{
             background: 'transparent',
