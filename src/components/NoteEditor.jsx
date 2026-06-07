@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import pb from '../lib/pocketbase';
 import { theme } from '../lib/theme';
 
@@ -81,6 +82,62 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
         title: newTitle,
         content: content
       }));
+    }
+  };
+
+  const handlePaste = async (e) => {
+    const items = e.clipboardData.items;
+    console.log('Paste event detected, items:', items);
+    
+    for (const item of items) {
+      console.log('Item type:', item.type, 'Kind:', item.kind);
+      if (item.type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        console.log('Image file:', file);
+        
+        if (file) {
+          try {
+            const formData = new FormData();
+            formData.append('images', file);
+            if (savedNoteRef.current?.id) {
+              formData.append('notes', savedNoteRef.current?.id);
+              console.log('Note ID:', savedNoteRef.current?.id);
+            } else {
+              console.log('No note ID found');
+            }
+            
+            console.log('Uploading image with field name: images');
+            const imageRecord = await pb.collection('images').create(formData);
+            console.log('Image uploaded successfully:', imageRecord);
+            
+            const baseUrl = pb.baseUrl.endsWith('/') ? pb.baseUrl.slice(0, -1) : pb.baseUrl;
+            const token = pb.authStore.token;
+            const imageUrl = `${baseUrl}/api/files/images/${imageRecord.id}/${imageRecord.images}${token ? '?token=' + token : ''}`;
+            console.log('Image URL:', imageUrl);
+            
+            const imageMarkdown = `
+
+![${file.name}](${imageUrl})
+
+`;
+            const newContent = content + imageMarkdown;
+            setContent(newContent);
+            
+            if (savedNoteRef.current?.id) {
+              localStorage.setItem(`unsaved_note_${savedNoteRef.current.id}`, JSON.stringify({
+                title: title,
+                content: newContent
+              }));
+            }
+          } catch (err) {
+            console.error('Failed to upload image:', err);
+            console.error('Error details:', err.message);
+            console.error('Error data:', err.data);
+          }
+        }
+        break;
+      }
     }
   };
 
@@ -219,7 +276,7 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
         .markdown-preview blockquote { border-left: 4px solid ${theme.colors.border.secondary}; margin: 1em 0; padding-left: 16px; color: ${theme.colors.text.muted}; font-style: italic; }
         .markdown-preview a { color: ${theme.colors.text.link}; text-decoration: underline; }
         .markdown-preview hr { border: none; border-top: 1px solid ${theme.colors.border.primary}; margin: 1.5em 0; }
-        .markdown-preview img { max-width: 100%; border-radius: 8px; }
+        .markdown-preview img { max-width: 100%; border-radius: 8px; margin: 1em 0; }
         .markdown-preview strong { font-weight: 700; color: ${theme.colors.text.primary}; }
         .markdown-preview em { font-style: italic; color: ${theme.colors.text.tertiary}; }
         .markdown-preview table { border-collapse: collapse; margin: 1em 0; }
@@ -250,12 +307,20 @@ const NoteEditor = forwardRef(({ note, onSave, refreshNotes }, ref) => {
       </div>
       {isPreview ? (
         <div style={{ padding: '8px', flex: 1, overflowY: 'auto', background: 'transparent', color: theme.colors.text.primary }} className="markdown-preview">
-          <ReactMarkdown>{content}</ReactMarkdown>
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            components={{
+              img: ({ node, ...props }) => <img style={{ maxWidth: '100%', borderRadius: '8px', margin: '1em 0' }} {...props} />
+            }}
+          >
+            {content}
+          </ReactMarkdown>
         </div>
       ) : (
         <textarea
           value={content}
           onChange={handleContentChange}
+          onPaste={handlePaste}
           placeholder="Write your note..."
           style={{
             background: 'transparent',
